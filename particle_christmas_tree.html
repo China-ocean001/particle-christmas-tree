@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>粒子圣诞树</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .greeting {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffd700;
+            z-index: 10;
+            animation: greetingFloat 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes greetingFloat {
+            from { transform: translateX(-50%) translateY(0px); }
+            to { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        .music-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 30px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn {
+            background-color: #ffd700;
+            color: #000000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .control-btn:hover {
+            background-color: #ffed4e;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            transform: scale(1.05);
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        #volumeSlider {
+            width: 100px;
+            -webkit-appearance: none;
+            height: 5px;
+            background: #ddd;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        #volumeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #ffd700;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        #volumeSlider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            background: #ffd700;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="greeting">牛雨晴，圣诞快乐</div>
+    <canvas id="canvas"></canvas>
+    
+    <audio id="christmasMusic" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" type="audio/mpeg">
+        您的浏览器不支持音频元素。
+    </audio>
+    
+    <div class="music-controls">
+        <button id="playPauseBtn" class="control-btn">播放音乐</button>
+        <div class="volume-control">
+            <label for="volumeSlider">音量:</label>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5">
+        </div>
+    </div>
+
+    <script>
+        // 配置参数
+        const config = {
+            particleCount: 10000,
+            treeCount: 1,  // 单个突出的圣诞树
+            backgroundColor: '#000011',
+            starColor: '#ffffff',
+            treeColor: '#00ff00',  // 绿色的圣诞树
+            ornamentColors: ['#ff0000', '#ffff00', '#00ffff', '#ff00ff'],  // 装饰球颜色
+            starOnTopColor: '#ffff00',  // 树顶星星颜色
+            glowColor: '#00aa00'
+        };
+
+        // 粒子类
+        class Particle {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * this.canvas.width;
+                this.y = Math.random() * this.canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 0.2 - 0.1;
+                this.speedY = Math.random() * 0.2 - 0.1;
+                this.color = config.starColor;
+                this.alpha = Math.random() * 0.5 + 0.3;
+                this.isTreeParticle = false;
+                this.treeIndex = -1;
+                this.life = Math.random() * 100 + 50;
+                this.maxLife = this.life;
+            }
+
+            update() {
+                if (this.isTreeParticle) {
+                    this.life -= 0.1;
+                    if (this.life <= 0) {
+                        this.reset();
+                    }
+                } else {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+
+                    if (this.x < 0 || this.x > this.canvas.width) this.speedX *= -1;
+                    if (this.y < 0 || this.y > this.canvas.height) this.speedY *= -1;
+                }
+            }
+
+            draw() {
+                this.ctx.save();
+                this.ctx.globalAlpha = this.alpha * (this.life / this.maxLife);
+                this.ctx.fillStyle = this.color;
+                this.ctx.shadowColor = this.color;
+                this.ctx.shadowBlur = 10;
+                this.ctx.beginPath();
+                this.ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.restore();
+            }
+
+            setAsTreeParticle(treeX, treeY, treeIndex) {
+                this.x = treeX;
+                this.y = treeY;
+                this.speedX = Math.random() * 0.2 - 0.1;
+                this.speedY = Math.random() * 0.2 - 0.1;
+                this.alpha = Math.random() * 0.9 + 0.6;
+                this.isTreeParticle = true;
+                this.treeIndex = treeIndex;
+                this.life = Math.random() * 100 + 150;  // 增加粒子停留时间
+                this.maxLife = this.life;
+                
+                // 随机选择粒子类型
+                const particleType = Math.random();
+                
+                // 80% 是树叶粒子
+                if (particleType < 0.8) {
+                    this.size = Math.random() * 2 + 1;
+                    this.color = config.treeColor;
+                }
+                // 15% 是装饰球粒子
+                else if (particleType < 0.95) {
+                    this.size = Math.random() * 3 + 2;
+                    this.color = config.ornamentColors[Math.floor(Math.random() * config.ornamentColors.length)];
+                }
+                // 5% 是树顶星星粒子
+                else {
+                    this.size = Math.random() * 4 + 3;
+                    this.color = config.starOnTopColor;
+                }
+            }
+        }
+
+        // 圣诞树生成器
+        class ChristmasTreeGenerator {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.trees = [];
+                this.generateTrees();
+            }
+
+            generateTrees() {
+                const baseY = this.canvas.height * 0.7;  // 调整垂直位置，使树更居中
+                const centerX = this.canvas.width / 2;
+
+                // 创建单棵大圣诞树
+                for (let i = 0; i < config.treeCount; i++) {
+                    const x = centerX;
+                    const height = Math.min(this.canvas.height * 0.85, 800);  // 增大树高和最大限制
+                    const width = height * 0.8;  // 增大树宽
+                    
+                    this.trees.push({
+                        x: x,
+                        y: baseY,
+                        height: height,
+                        width: width
+                    });
+                }
+            }
+
+            getTreeParticlePosition(treeIndex) {
+                const tree = this.trees[treeIndex];
+                
+                // 创建圣诞树的锥形形状
+                const t = Math.random();
+                const radius = tree.width * (1 - t) * 0.5;
+                const angle = (Math.random() * Math.PI - Math.PI / 2) * 0.5;
+                
+                // 添加一些随机性，使树看起来更自然
+                const randomOffset = (Math.random() - 0.5) * 10;
+                
+                const x = tree.x + Math.cos(angle) * radius + randomOffset;
+                const y = tree.y - t * tree.height + randomOffset;
+                
+                return { x, y };
+            }
+        }
+
+        // 主粒子系统
+        class ParticleSystem {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.treeGenerator = new ChristmasTreeGenerator(this.canvas);
+                this.treeParticles = 0;
+                this.maxTreeParticles = 5000;  // 显著增加树粒子数量，使树更浓密饱满
+                this.ornamentPositions = [];
+                
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.init();
+                this.generateOrnamentPositions();
+                this.animate();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.treeGenerator.generateTrees();
+                this.generateOrnamentPositions();
+            }
+
+            init() {
+                for (let i = 0; i < config.particleCount; i++) {
+                    this.particles.push(new Particle(this.canvas));
+                }
+            }
+
+            generateOrnamentPositions() {
+                this.ornamentPositions = [];
+                const tree = this.treeGenerator.trees[0];
+                const layers = 8;
+                
+                for (let layer = 0; layer < layers; layer++) {
+                    const t = layer / layers;
+                    const radius = tree.width * (1 - t) * 0.5;
+                    const y = tree.y - t * tree.height;
+                    const ornamentsPerLayer = Math.floor((1 - t) * 12) + 3;
+                    
+                    for (let i = 0; i < ornamentsPerLayer; i++) {
+                        const angle = (Math.PI * 2 * i) / ornamentsPerLayer;
+                        const offsetRadius = radius * (0.3 + Math.random() * 0.4);
+                        
+                        this.ornamentPositions.push({
+                            x: tree.x + Math.cos(angle) * offsetRadius,
+                            y: y + (Math.random() - 0.5) * 20,
+                            color: config.ornamentColors[Math.floor(Math.random() * config.ornamentColors.length)]
+                        });
+                    }
+                }
+            }
+
+            drawOrnaments() {
+                for (let pos of this.ornamentPositions) {
+                    // 绘制装饰球
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.8;
+                    this.ctx.fillStyle = pos.color;
+                    this.ctx.shadowColor = pos.color;
+                    this.ctx.shadowBlur = 15;
+                    this.ctx.beginPath();
+                    this.ctx.arc(pos.x, pos.y, 5 + Math.random() * 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+
+            drawStarOnTop() {
+                if (this.treeGenerator.trees.length > 0) {
+                    const tree = this.treeGenerator.trees[0];
+                    const starX = tree.x;
+                    const starY = tree.y - tree.height - 30;  // 调整星星位置，与更大的树协调
+                    
+                    // 绘制树顶星星
+                    this.ctx.save();
+                    this.ctx.fillStyle = config.starOnTopColor;
+                    this.ctx.shadowColor = config.starOnTopColor;
+                    this.ctx.shadowBlur = 30;  // 增加阴影模糊效果
+                    this.ctx.beginPath();
+                    
+                    // 绘制五角星
+                    const starSize = 50;  // 进一步增大星星尺寸，与更大的树匹配
+                    for (let i = 0; i < 5; i++) {
+                        const angle1 = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+                        const angle2 = (Math.PI * 2 * (i + 0.5)) / 5 - Math.PI / 2;
+                        
+                        const x1 = starX + Math.cos(angle1) * starSize;
+                        const y1 = starY + Math.sin(angle1) * starSize;
+                        const x2 = starX + Math.cos(angle2) * starSize * 0.4;
+                        const y2 = starY + Math.sin(angle2) * starSize * 0.4;
+                        
+                        if (i === 0) {
+                            this.ctx.moveTo(x1, y1);
+                        } else {
+                            this.ctx.lineTo(x1, y1);
+                        }
+                        this.ctx.lineTo(x2, y2);
+                    }
+                    
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+            }
+
+            animate() {
+                this.ctx.fillStyle = config.backgroundColor;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // 统计当前树粒子数量
+                this.treeParticles = this.particles.filter(p => p.isTreeParticle).length;
+
+                for (let particle of this.particles) {
+                    particle.update();
+                    particle.draw();
+
+                    // 生成树粒子
+                    if (!particle.isTreeParticle && this.treeParticles < this.maxTreeParticles && Math.random() < 0.01) {
+                        const treeIndex = Math.floor(Math.random() * config.treeCount);
+                        const pos = this.treeGenerator.getTreeParticlePosition(treeIndex);
+                        particle.setAsTreeParticle(pos.x, pos.y, treeIndex);
+                    }
+                }
+
+                // 绘制装饰球
+                this.drawOrnaments();
+                
+                // 绘制树顶星星
+                this.drawStarOnTop();
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // 音乐控制
+        window.addEventListener('DOMContentLoaded', () => {
+            const audio = document.getElementById('christmasMusic');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const volumeSlider = document.getElementById('volumeSlider');
+
+            new ParticleSystem('canvas');
+
+            audio.volume = volumeSlider.value;
+
+            playPauseBtn.addEventListener('click', () => {
+                if (audio.paused) {
+                    audio.play().catch(error => console.log('音频播放失败:', error));
+                    playPauseBtn.textContent = '暂停音乐';
+                } else {
+                    audio.pause();
+                    playPauseBtn.textContent = '播放音乐';
+                }
+            });
+
+            volumeSlider.addEventListener('input', () => {
+                audio.volume = volumeSlider.value;
+            });
+        });
+    </script>
+</body>
+</html>
