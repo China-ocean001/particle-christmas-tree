@@ -137,6 +137,20 @@ const LIGHT_COLORS = ['#e74c3c', '#f1c40f', '#3498db', '#e91e63'];
 
 ---
 
+## ☕ 支持作者
+
+如果这个项目让你开心，欢迎请我喝杯咖啡~
+
+<div align="center">
+
+| <img src="https://raw.githubusercontent.com/China-ocean001/campus-repair-platform/master/sponsor/alipay.jpg" width="260" alt="支付宝"> | <img src="https://raw.githubusercontent.com/China-ocean001/campus-repair-platform/master/sponsor/wechat.jpg" width="260" alt="微信支付"> |
+|:---:|:---:|
+| **支付宝** | **微信支付** |
+
+</div>
+
+---
+
 ## 📄 License
 
 MIT License
